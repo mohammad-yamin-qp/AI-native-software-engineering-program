@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Code — AI-Powered Development Workflows</title>
+  <style>
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&display=swap');
+
+  :root {
+    --bg:      #ffffff;
+    --fg:      #0f0f0f;
+    --fg-sub:  #2e2e2e;
+    --fg-muted:#666666;
+    --border:  #e0e0e0;
+    --surface: #f4f4f6;
+    --accent:  oklch(61.6% 0.1696 251.2);
+    --accent-soft: oklch(61.6% 0.1696 251.2 / 8%);
+    --accent-mid:  oklch(61.6% 0.1696 251.2 / 18%);
+    --slide-bg: #fff;
+    --slide-text: oklch(47.8% 0.0244 255);
+    --slide-text-subtle: oklch(68.9% 0 0);
+    --slide-border: oklch(88.2% 0 0);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Fira Sans', system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--fg);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .slides { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 4.5rem 7rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    background: var(--bg);
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+  .slide.center { align-items: center; text-align: center; }
+
+  h1 { font-size: 5.25rem; font-weight: 700; color: var(--fg); line-height: 1.06; letter-spacing: -0.025em; }
+  h2 { font-size: 3.75rem; font-weight: 600; color: var(--fg); line-height: 1.1;  letter-spacing: -0.015em; }
+  h3 { font-size: 2rem; font-weight: 600; color: var(--fg); line-height: 1.2; }
+  p  { font-size: 1.45rem; color: var(--fg-sub); line-height: 1.65; }
+
+  .kicker {
+    font-size: 0.85rem; font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 1.5rem;
+  }
+  .accent { color: var(--accent); }
+
+  /* Title slide */
+  .slide.title-slide { border-left: 6px solid var(--accent); }
+
+  /* Divider slides */
+  .slide.divider { background: var(--accent); }
+  .slide.divider h2 { color: #fff; font-size: 3.75rem; }
+  .slide.divider .sub { font-size: 1.35rem; color: oklch(100% 0 0 / 65%); margin-top: 0.75rem; }
+
+  /* Progress bar */
+  .progress-bar { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent); width: 0; z-index: 100; transition: width 0.35s cubic-bezier(.2,.8,.2,1); }
+
+  /* Nav */
+  .slide-nav {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    display: flex; gap: 0.5rem; z-index: 100;
+  }
+  .slide-nav button {
+    font-family: inherit; font-size: 1.1rem; padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--fg-muted); cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .slide-nav button:hover { color: var(--fg); background: #ebebeb; }
+  .slide-nav button:active { transform: scale(0.92); }
+
+  .slide-counter {
+    position: fixed; bottom: 1.75rem; left: 50%; transform: translateX(-50%);
+    font-size: 0.8rem; color: var(--fg-muted);
+  }
+
+  /* Keyboard hint */
+  .kbd-hint {
+    position: fixed; bottom: 1.75rem; left: 1.5rem;
+    font-size: 0.72rem; color: var(--fg-muted); letter-spacing: 0.04em;
+  }
+
+  /* ── Component styles ── */
+
+  /* Concept comparison: Command vs Skill */
+  .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; margin-top: 2rem; }
+  .vs-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 1.5rem 1.75rem; background: var(--surface); }
+  .vs-card.hi { border-color: var(--accent); background: var(--accent-soft); }
+  .vs-card-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.5rem; }
+  .vs-card.hi .vs-card-label { color: var(--accent); }
+  .vs-card-title { font-size: 1.6rem; font-weight: 700; color: var(--fg); margin-bottom: 0.75rem; }
+  .vs-card.hi .vs-card-title { color: var(--accent); }
+  .vs-attr { font-size: 1rem; color: var(--fg-muted); margin-bottom: 0.35rem; line-height: 1.5; }
+  .vs-attr strong { color: var(--fg-sub); font-weight: 600; }
+
+  /* Workflow steps (command internals) */
+  .cmd-block { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-top: 1.75rem; width: 100%; }
+  .cmd-header { padding: 0.75rem 1.5rem; background: var(--fg); display: flex; align-items: center; gap: 0.75rem; }
+  .cmd-header-dots { display: flex; gap: 0.4rem; }
+  .cmd-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .cmd-filename { font-family: monospace; font-size: 0.9rem; color: #aaa; margin-left: 0.25rem; }
+  .cmd-body { background: #0e0e0e; padding: 1.25rem 1.75rem; }
+  .cmd-line { font-family: monospace; font-size: 1rem; line-height: 1.8; color: #ccc; }
+  .cmd-comment { color: #555; }
+  .cmd-key { color: #528bff; }
+  .cmd-val { color: #98c379; }
+  .cmd-step { color: #e5c07b; }
+  .cmd-bash { color: #c678dd; }
+
+  /* Step-by-step flow */
+  .steps-list { display: flex; flex-direction: column; margin-top: 2rem; width: 100%; max-width: 680px; }
+  .step-row { display: flex; align-items: flex-start; gap: 1.5rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .step-row:first-child { border-radius: 14px 14px 0 0; }
+  .step-row:last-child  { border-bottom: none; border-radius: 0 0 14px 14px; }
+  .step-num   { font-size: 0.72rem; font-weight: 700; color: var(--accent); width: 22px; flex-shrink: 0; padding-top: 0.2rem; font-family: monospace; }
+  .step-title { font-size: 1rem;    font-weight: 700; color: var(--fg); }
+  .step-desc  { font-size: 0.92rem; color: var(--fg-muted); margin-top: 0.2rem; line-height: 1.45; }
+
+  /* Chat conversation */
+  .chat-block { display: flex; flex-direction: column; gap: 0.85rem; margin-top: 2rem; width: 100%; max-width: 720px; }
+  .chat-row { display: flex; gap: 1rem; align-items: flex-start; }
+  .chat-who  { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; width: 58px; flex-shrink: 0; padding-top: 0.55rem; }
+  .chat-who.you  { color: var(--accent); }
+  .chat-who.ai   { color: var(--fg-muted); }
+  .chat-who.hook { color: oklch(72.3% 0.1755 56.7); }
+  .chat-bubble { font-family: monospace; font-size: 1rem; padding: 0.6rem 1rem; border-radius: 10px; line-height: 1.6; flex: 1; }
+  .chat-bubble.cmd    { background: var(--accent-soft); border: 1px solid var(--accent); color: oklch(33% 0.13 254); }
+  .chat-bubble.reply  { background: var(--surface); border: 1px solid var(--border); color: var(--fg-sub); }
+  .chat-bubble.hookbg { background: oklch(72.3% 0.1755 56.7 / 8%); border: 1px solid oklch(72.3% 0.1755 56.7 / 30%); color: oklch(38% 0.15 50); }
+  .chat-bubble.ok     { background: oklch(93.4% 0.0698 124.3); border: 1px solid oklch(49.9% 0.1603 139.9 / 40%); color: oklch(31% 0.12 140); }
+
+  /* Decision table */
+  .dtable { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+  .dtable th { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.5rem 1rem; border-bottom: 2px solid var(--border); color: var(--fg-muted); text-align: left; }
+  .dtable th.acc { color: var(--accent); }
+  .dtable td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 1rem; color: var(--fg-sub); vertical-align: middle; }
+  .dtable tr:last-child td { border-bottom: none; }
+  .dtable tr:hover td { background: var(--surface); }
+  .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.18rem 0.55rem; border-radius: 5px; }
+  .badge-cmd  { background: var(--accent-mid); color: oklch(33% 0.13 254); border: 1px solid oklch(61.6% 0.1696 251.2 / 35%); }
+  .badge-ski  { background: oklch(93.4% 0.0426 224.9); color: oklch(33% 0.12 260); border: 1px solid oklch(61.6% 0.12 260 / 30%); }
+  .badge-ei   { background: oklch(95% 0.0781 95.7); color: oklch(38% 0.1 80); border: 1px solid oklch(65% 0.12 80 / 35%); }
+
+  /* Repo tree */
+  .tree { font-family: monospace; font-size: 1.05rem; line-height: 2; color: var(--fg-sub); margin-top: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; }
+  .tree-acc { color: var(--accent); font-weight: 700; }
+  .tree-muted { color: var(--fg-muted); }
+
+  /* Hook config block */
+  .hook-block { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; width: 100%; margin-top: 1.75rem; }
+  .hook-head { padding: 0.6rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); display: flex; gap: 1.25rem; }
+  .hook-event { color: oklch(72.3% 0.1755 56.7); }
+  .hook-body { background: #0e0e0e; padding: 1.1rem 1.5rem; font-family: monospace; font-size: 0.95rem; line-height: 1.75; color: #ccc; overflow-x: auto; }
+  .json-key  { color: #e06c75; }
+  .json-val  { color: #98c379; }
+  .json-num  { color: #d19a66; }
+  .json-bool { color: #56b6c2; }
+
+  /* Pipeline flow */
+  .pipeline { display: flex; align-items: stretch; width: 100%; margin-top: 2rem; gap: 0; }
+  .pip-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; padding: 0.65rem 0.5rem; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .pip-step.on { border-color: var(--accent); background: var(--accent-soft); }
+  .pip-step-name { font-size: 0.82rem; font-weight: 700; color: var(--fg-muted); white-space: nowrap; }
+  .pip-step.on .pip-step-name { color: var(--accent); }
+  .pip-badge { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); background: var(--accent-mid); padding: 0.1rem 0.35rem; border-radius: 4px; }
+  .pip-arr { font-size: 1rem; color: var(--border); padding: 0 0.3rem; align-self: center; flex-shrink: 0; }
+  .pip-arr.on { color: var(--accent); opacity: 0.5; }
+
+  /* Summary grid */
+  .sum-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.85rem; width: 100%; margin-top: 2rem; }
+  .sum-card { border: 1.5px solid var(--border); border-radius: 12px; padding: 1.1rem 1rem; background: var(--surface); display: flex; flex-direction: column; gap: 0.35rem; }
+  .sum-card.hi { border-color: var(--accent); background: var(--accent-soft); }
+  .sum-slash { font-size: 1.15rem; font-weight: 700; color: var(--accent); font-family: monospace; }
+  .sum-name  { font-size: 0.88rem; font-weight: 600; color: var(--fg-sub); line-height: 1.3; }
+  .sum-card.hi .sum-name { color: var(--fg); }
+  .sum-hook  { font-size: 0.7rem; color: oklch(72.3% 0.1755 56.7); margin-top: 0.2rem; }
+
+  /* Tag pill */
+  .tag { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+  .tag-cmd { background: var(--accent-mid); color: oklch(33% 0.13 254); }
+  .tag-ski { background: oklch(93.4% 0.0698 124.3); color: oklch(31% 0.10 140); }
+
+  /* ── Animations ── */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes riseIn   { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+    @keyframes popIn    { from { opacity: 0; transform: scale(0.86); }      to { opacity: 1; transform: none; } }
+    @keyframes slideInL { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+
+    .slide.active .kicker { animation: riseIn 0.5s ease both; }
+    .slide.active h1       { animation: riseIn 0.6s cubic-bezier(.2,.7,.2,1) 0.05s both; }
+    .slide.active h2       { animation: riseIn 0.6s cubic-bezier(.2,.7,.2,1) 0.05s both; }
+    .slide.active > p,
+    .slide.active .chat-block,
+    .slide.active .tree,
+    .slide.active .dtable  { animation: riseIn 0.6s ease 0.15s both; }
+    .slide.active > p ~ p  { animation-delay: 0.28s; }
+
+    .slide.divider.active h2   { animation: popIn 0.55s cubic-bezier(.2,.8,.2,1) both; }
+    .slide.divider.active .sub { animation: riseIn 0.5s ease 0.2s both; }
+
+    .slide.active .step-row { animation: slideInL 0.5s ease both; }
+    .slide.active .step-row:nth-child(1){animation-delay:.15s}
+    .slide.active .step-row:nth-child(2){animation-delay:.27s}
+    .slide.active .step-row:nth-child(3){animation-delay:.39s}
+    .slide.active .step-row:nth-child(4){animation-delay:.51s}
+    .slide.active .step-row:nth-child(5){animation-delay:.63s}
+    .slide.active .step-row:nth-child(6){animation-delay:.75s}
+    .slide.active .step-row:nth-child(7){animation-delay:.87s}
+
+    .slide.active .vs-card { animation: popIn 0.5s ease both; }
+    .slide.active .vs-card:nth-child(1){animation-delay:.10s}
+    .slide.active .vs-card:nth-child(2){animation-delay:.22s}
+
+    .slide.active .sum-card { animation: popIn 0.45s ease both; }
+    .slide.active .sum-card:nth-child(1){animation-delay:.08s}
+    .slide.active .sum-card:nth-child(2){animation-delay:.16s}
+    .slide.active .sum-card:nth-child(3){animation-delay:.24s}
+    .slide.active .sum-card:nth-child(4){animation-delay:.32s}
+    .slide.active .sum-card:nth-child(5){animation-delay:.40s}
+
+    .slide.active .chat-row { animation: slideInL 0.45s ease both; }
+    .slide.active .chat-row:nth-child(1){animation-delay:.12s}
+    .slide.active .chat-row:nth-child(2){animation-delay:.26s}
+    .slide.active .chat-row:nth-child(3){animation-delay:.40s}
+    .slide.active .chat-row:nth-child(4){animation-delay:.54s}
+
+    .slide.active .pip-step { animation: popIn 0.4s ease both; }
+    .slide.active .pip-step:nth-child(1){animation-delay:.08s}
+    .slide.active .pip-step:nth-child(3){animation-delay:.18s}
+    .slide.active .pip-step:nth-child(5){animation-delay:.28s}
+    .slide.active .pip-step:nth-child(7){animation-delay:.38s}
+    .slide.active .pip-step:nth-child(9){animation-delay:.48s}
+    .slide.active .pip-step:nth-child(11){animation-delay:.58s}
+
+    .slide.active .cmd-block,
+    .slide.active .hook-block { animation: riseIn 0.55s ease 0.2s both; }
+
+    .slide.active .vs-grid { animation: riseIn 0.55s ease 0.15s both; }
+  }
+  </style>
+</head>
+<body>
+
+<div class="slides">
+
+  <!-- 01 · TITLE -->
+  <div class="slide title-slide active">
+    <div class="kicker">Claude Code · AI-Powered Development · Session</div>
+    <h1>Repeatable<br>AI Workflows<br><span class="accent">for Engineers</span></h1>
+    <p style="margin-top: 2rem; max-width: 640px;">Slash commands, skills, and hooks — the three primitives that turn one-off prompts into production-grade repeatable workflows.</p>
+  </div>
+
+  <!-- 02 · THE PROBLEM -->
+  <div class="slide center">
+    <div class="kicker">The problem</div>
+    <h1>Every engineer<br>prompts <span class="accent">differently.</span></h1>
+    <p style="margin-top: 2rem; max-width: 600px;">Same codebase. Different words. Different quality. Different output — every single time.</p>
+    <p style="margin-top: 1.1rem; max-width: 600px; color: var(--fg-muted);">The model is consistent. The prompting isn't.</p>
+  </div>
+
+  <!-- 03 · THESIS -->
+  <div class="slide center">
+    <div class="kicker">The fix</div>
+    <h1>Encode the workflow.<br><span class="accent">Not the prompt.</span></h1>
+    <p style="margin-top: 2rem; max-width: 620px;">Check it into Git. Share it with the team. Run it the same way, every time, by anyone.</p>
+  </div>
+
+  <!-- 04 · THREE PRIMITIVES -->
+  <div class="slide">
+    <div class="kicker">Three primitives</div>
+    <h2>Commands. Skills.<br><span class="accent">Hooks.</span></h2>
+    <div class="steps-list" style="max-width: 100%">
+      <div class="step-row">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Slash Commands — <span style="font-family: monospace; font-weight: 400; font-size: 0.95rem;">.claude/commands/name.md</span></div>
+          <div class="step-desc">Markdown files that define a step-by-step workflow. Triggered manually: <code>/debug</code>, <code>/review</code>, <code>/test</code>. Verb-oriented — you invoke them when you have a specific task.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Skills — <span style="font-family: monospace; font-weight: 400; font-size: 0.95rem;">.claude/skills/name/SKILL.md</span></div>
+          <div class="step-desc">Standing knowledge. Claude reads and applies it automatically when relevant — your NestJS patterns, team conventions, domain vocabulary. No invocation needed.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Hooks — <span style="font-family: monospace; font-weight: 400; font-size: 0.95rem;">.claude/settings.json</span></div>
+          <div class="step-desc">Deterministic shell scripts that fire on Claude's lifecycle events (PreToolUse, PostToolUse, Stop). Enforce rules the model cannot bypass — run tests, block secrets, check coverage.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 · REPO LAYOUT -->
+  <div class="slide">
+    <div class="kicker">Where things live</div>
+    <h2>One folder.<br><span class="accent">Git-tracked.</span></h2>
+    <div class="tree">
+      your-repo/<br>
+      ├── <span class="tree-acc">CLAUDE.md</span>                 <span class="tree-muted">← EQC rules, stack conventions, naming patterns</span><br>
+      └── <span class="tree-acc">.claude/</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;├── <span class="tree-acc">settings.json</span>        <span class="tree-muted">← hooks config (PreToolUse, PostToolUse, Stop)</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;├── <span class="tree-acc">skills/</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── backend-nestjs-conventions/<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── SKILL.md         <span class="tree-muted">← auto-applied; also works as /backend-nestjs-conventions</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;└── <span class="tree-acc">commands/</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── debug.md            <span class="tree-muted">→ /debug</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── refactor.md         <span class="tree-muted">→ /refactor</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── test.md             <span class="tree-muted">→ /test</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── docs.md             <span class="tree-muted">→ /docs</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── review.md           <span class="tree-muted">→ /review</span>
+    </div>
+    <p style="margin-top: 1.75rem;">Every engineer on the team gets identical workflows — no personal drift between teammates.</p>
+  </div>
+
+  <!-- DIVIDER · FIVE WORKFLOWS -->
+  <div class="slide divider center">
+    <h2>Five Repeatable Workflows</h2>
+    <div class="sub">Debug · Refactor · Test · Docs · Review</div>
+  </div>
+
+  <!-- 06 · DEBUG -->
+  <div class="slide">
+    <div class="kicker">Workflow 1 · /debug</div>
+    <h2>Root cause it.<br>Fix it. Verify <span class="accent">it.</span></h2>
+    <div class="chat-block">
+      <div class="chat-row">
+        <span class="chat-who you">You</span>
+        <div class="chat-bubble cmd">/debug "TypeError: Cannot read properties of undefined (reading 'id') at survey.service.ts:87"</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Claude</span>
+        <div class="chat-bubble reply">Reading survey.service.ts:87… owner is not eagerly loaded in TypeORM query.<br>Fix: add <code>relations: ['owner']</code> to findOne. Applying…</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who hook">Hook</span>
+        <div class="chat-bubble hookbg">PostToolUse → running: npm run test -- survey.service.spec.ts</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Result</span>
+        <div class="chat-bubble ok">✓ 12 tests passed. Root cause: missing relation. Fixed in 1 edit.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 07 · DEBUG COMMAND ANATOMY -->
+  <div class="slide">
+    <div class="kicker">Workflow 1 · debug.md anatomy</div>
+    <h3>What the command file <span class="accent">contains</span></h3>
+    <div class="cmd-block">
+      <div class="cmd-header">
+        <div class="cmd-header-dots">
+          <div class="cmd-dot" style="background:#ff5f57"></div>
+          <div class="cmd-dot" style="background:#febc2e"></div>
+          <div class="cmd-dot" style="background:#28c840"></div>
+        </div>
+        <span class="cmd-filename">.claude/commands/debug.md</span>
+      </div>
+      <div class="cmd-body">
+        <div class="cmd-line"><span class="cmd-comment">---</span></div>
+        <div class="cmd-line"><span class="cmd-key">description:</span> <span class="cmd-val">Root-cause a bug, fix it, and verify with tests</span></div>
+        <div class="cmd-line"><span class="cmd-key">allowed-tools:</span> <span class="cmd-val">Bash, Read, Edit, Glob</span></div>
+        <div class="cmd-line"><span class="cmd-key">argument-hint:</span> <span class="cmd-val">[error message or stack trace]</span></div>
+        <div class="cmd-line"><span class="cmd-comment">---</span></div>
+        <div class="cmd-line">&nbsp;</div>
+        <div class="cmd-line"><span class="cmd-step">## Steps</span></div>
+        <div class="cmd-line"><span class="cmd-step">1.</span> Parse $ARGUMENTS → extract file, line, error type</div>
+        <div class="cmd-line"><span class="cmd-step">2.</span> Read failing file + its imports</div>
+        <div class="cmd-line"><span class="cmd-step">3.</span> Identify root cause (not symptom)</div>
+        <div class="cmd-line"><span class="cmd-step">4.</span> Apply the minimal fix — one file at a time</div>
+        <div class="cmd-line"><span class="cmd-step">5.</span> <span class="cmd-bash">npm run test -- --testPathPattern=&lt;spec&gt;</span></div>
+        <div class="cmd-line"><span class="cmd-step">6.</span> Iterate max 3 rounds if still failing</div>
+        <div class="cmd-line"><span class="cmd-step">7.</span> Report: root cause · fix · test result</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 08 · REFACTOR -->
+  <div class="slide">
+    <div class="kicker">Workflow 2 · /refactor</div>
+    <h2>Plan first.<br><span class="accent">Then act.</span></h2>
+    <div class="chat-block">
+      <div class="chat-row">
+        <span class="chat-who you">You</span>
+        <div class="chat-bubble cmd">/refactor src/survey/survey.service.ts</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Claude</span>
+        <div class="chat-bubble reply">Issues found: fat service (14 methods, 3 concerns), magic strings ×6, no ISurveyCreateDto.<br><br>Plan: extract SurveyNotificationService, move constants, add interface.<br><br>Proceed? (yes / no)</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who you">You</span>
+        <div class="chat-bubble cmd">yes</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Claude</span>
+        <div class="chat-bubble ok">Step 1/3 done — SurveyNotificationService extracted. All existing tests pass. Continuing…</div>
+      </div>
+    </div>
+    <p style="margin-top: 1.5rem; max-width: 660px; font-size: 1.1rem;">The plan gate is baked into the command. Claude will not edit a file until you approve.</p>
+  </div>
+
+  <!-- 09 · TEST -->
+  <div class="slide">
+    <div class="kicker">Workflow 3 · /test</div>
+    <h2>Generate. Run.<br><span class="accent">Cover.</span></h2>
+    <div class="chat-block">
+      <div class="chat-row">
+        <span class="chat-who you">You</span>
+        <div class="chat-bubble cmd">/test src/translation/translation.service.ts</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Claude</span>
+        <div class="chat-bubble reply">Found 4 public methods. Scanning existing specs for mock patterns… reusing HttpService mock from survey.service.spec.ts.<br><br>Generating 8 test cases: happy path, edge cases, error branches. Running coverage…</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Result</span>
+        <div class="chat-bubble ok">Coverage: 94% branches. 1 uncovered: cacheResult() when Redis unavailable. Adding test…</div>
+      </div>
+    </div>
+    <p style="margin-top: 1.5rem; max-width: 660px; font-size: 1.1rem;">Claude scans your existing spec files first — the generated tests look like your team's existing tests, not generic boilerplate.</p>
+  </div>
+
+  <!-- 10 · DOCS -->
+  <div class="slide">
+    <div class="kicker">Workflow 4 · /docs</div>
+    <h2>TSDoc + Swagger.<br><span class="accent">Zero rework.</span></h2>
+    <div class="chat-block">
+      <div class="chat-row">
+        <span class="chat-who you">You</span>
+        <div class="chat-bubble cmd">/docs src/ticketing/ticket.controller.ts</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Claude</span>
+        <div class="chat-bubble reply">6 endpoints, 0 existing Swagger decorators. Adding @ApiOperation + @ApiResponse to each. Adding TSDoc to all public methods. Skipping private helpers.</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who hook">Hook</span>
+        <div class="chat-bubble hookbg">PostToolUse → typedoc --validation: 0 missing symbols in ticket.controller.ts</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Result</span>
+        <div class="chat-bubble ok">6 methods documented. 12 Swagger decorators added. 0 existing comments modified.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 · REVIEW -->
+  <div class="slide">
+    <div class="kicker">Workflow 5 · /review</div>
+    <h2>Catch it<br><span class="accent">before the PR.</span></h2>
+    <div class="chat-block">
+      <div class="chat-row">
+        <span class="chat-who you">You</span>
+        <div class="chat-bubble cmd">/review feature/admin2-ticketing-migration</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Claude</span>
+        <div class="chat-bubble reply">8 files reviewed. Findings:<br><br><span style="color:#c0392b;font-weight:700">[CRITICAL]</span> ticket.service.ts:134 — SQL injection via string interpolation.<br><span style="color:oklch(38% 0.15 50);font-weight:700">[WARNING]</span>&nbsp; ticket.controller.ts:67 — DELETE endpoint has no auth guard.<br><span style="color:var(--fg-muted);font-weight:700">[SUGGEST]</span>&nbsp; ticket.repository.ts:22 — findAll() loads all columns.</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Verdict</span>
+        <div class="chat-bubble hookbg">1 critical · 1 warning · 1 suggestion. Fix the critical before opening the PR.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER · HOOKS -->
+  <div class="slide divider center">
+    <h2>Hooks — The Enforcement Layer</h2>
+    <div class="sub">Rules the model cannot bypass</div>
+  </div>
+
+  <!-- 12 · HOOKS EXPLAINER -->
+  <div class="slide">
+    <div class="kicker">Hooks · settings.json</div>
+    <h2>Deterministic.<br><span class="accent">Every time.</span></h2>
+    <div class="hook-block">
+      <div class="hook-head">
+        <span>settings.json</span>
+        <span class="hook-event">PostToolUse · PreToolUse · Stop</span>
+      </div>
+      <div class="hook-body">
+        {<br>
+        &nbsp;&nbsp;<span class="json-key">"hooks"</span>: {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="json-key">"PostToolUse"</span>: [{ <span class="json-key">"matcher"</span>: <span class="json-val">"Edit"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="json-key">"hooks"</span>: [{ <span class="json-key">"type"</span>: <span class="json-val">"command"</span>, <span class="json-key">"command"</span>: <span class="json-val">"npm run test --silent"</span> }] }],<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="json-key">"PreToolUse"</span>: [{ <span class="json-key">"matcher"</span>: <span class="json-val">"Edit"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="json-key">"hooks"</span>: [{ <span class="json-key">"type"</span>: <span class="json-val">"command"</span>, <span class="json-key">"command"</span>: <span class="json-val">"detect-hardcoded-secrets.sh"</span> }] }],<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="json-key">"Stop"</span>: [{ <span class="json-key">"hooks"</span>: [{ <span class="json-key">"type"</span>: <span class="json-val">"agent"</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="json-key">"prompt"</span>: <span class="json-val">"Check branch coverage >= 80%"</span> }] }]<br>
+        &nbsp;&nbsp;}<br>
+        }
+      </div>
+    </div>
+    <p style="margin-top: 1.5rem; max-width: 680px; font-size: 1.1rem;">Unlike prompts — hooks run regardless of what Claude decides. Shell exit code 0 = proceed. Non-zero = blocked.</p>
+  </div>
+
+  <!-- DIVIDER · COMMAND VS SKILL -->
+  <div class="slide divider center">
+    <h2>Command vs. Skill</h2>
+    <div class="sub">When to use which</div>
+  </div>
+
+  <!-- 13 · THE DIFFERENCE -->
+  <div class="slide">
+    <div class="kicker">The mental model</div>
+    <h2>Verb vs.<br><span class="accent">Handbook.</span></h2>
+    <div class="vs-grid">
+      <div class="vs-card hi">
+        <div class="vs-card-label">Command</div>
+        <div class="vs-card-title">/debug, /review, /test</div>
+        <div class="vs-attr"><strong>Trigger:</strong> You type /name</div>
+        <div class="vs-attr"><strong>Best for:</strong> A task with a clear start — debug this error, review this branch</div>
+        <div class="vs-attr"><strong>Scope:</strong> Narrow, time-boxed</div>
+        <div class="vs-attr"><strong>Analogy:</strong> A runbook you open when needed</div>
+      </div>
+      <div class="vs-card">
+        <div class="vs-card-label">Skill</div>
+        <div class="vs-card-title">backend-nestjs-conventions</div>
+        <div class="vs-attr"><strong>Trigger:</strong> Claude infers from context</div>
+        <div class="vs-attr"><strong>Best for:</strong> Standing knowledge — team standards, patterns, domain vocabulary</div>
+        <div class="vs-attr"><strong>Scope:</strong> Broad, persistent across the session</div>
+        <div class="vs-attr"><strong>Analogy:</strong> A teammate who has absorbed your handbook</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 · DECISION TABLE -->
+  <div class="slide">
+    <div class="kicker">Which one? · Decision guide</div>
+    <h3>Ask: is it a <span class="accent">verb</span> or a <span class="accent">rule?</span></h3>
+    <table class="dtable" style="margin-top: 1.5rem;">
+      <thead>
+        <tr>
+          <th>Situation</th>
+          <th class="acc">Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Debug this specific error right now</td><td><span class="badge badge-cmd">Command</span></td></tr>
+        <tr><td>Every file Claude edits should follow our NestJS patterns</td><td><span class="badge badge-ski">Skill</span></td></tr>
+        <tr><td>Run a code review before opening a PR</td><td><span class="badge badge-cmd">Command</span></td></tr>
+        <tr><td>Claude should always use our DTO validation style</td><td><span class="badge badge-ski">Skill</span></td></tr>
+        <tr><td>Generate tests for this service file</td><td><span class="badge badge-cmd">Command</span></td></tr>
+        <tr><td>Teach Claude the domain language of our ticketing system</td><td><span class="badge badge-ski">Skill</span></td></tr>
+        <tr><td>Can be both manually invoked AND auto-activated</td><td><span class="badge badge-ei">Either</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 15 · THE AI-NATIVE PIPELINE -->
+  <div class="slide">
+    <div class="kicker">The bigger picture</div>
+    <h2>AI at every<br><span class="accent">stage.</span> Not just code.</h2>
+    <div class="pipeline">
+      <div class="pip-step on"><div class="pip-badge">AI</div><div class="pip-step-name">PRD / Proto</div></div>
+      <div class="pip-arr on">→</div>
+      <div class="pip-step on"><div class="pip-badge">AI</div><div class="pip-step-name">Plan</div></div>
+      <div class="pip-arr on">→</div>
+      <div class="pip-step on"><div class="pip-badge">AI</div><div class="pip-step-name">Spec</div></div>
+      <div class="pip-arr on">→</div>
+      <div class="pip-step on"><div class="pip-badge">AI</div><div class="pip-step-name">Tests</div></div>
+      <div class="pip-arr on">→</div>
+      <div class="pip-step on"><div class="pip-badge">AI</div><div class="pip-step-name">Code</div></div>
+      <div class="pip-arr on">→</div>
+      <div class="pip-step on"><div class="pip-badge">AI</div><div class="pip-step-name">Review</div></div>
+    </div>
+    <p style="margin-top: 2rem; max-width: 700px;">The five workflows cover the last two stages. The same approach — encode, check in, share — applies to all six.</p>
+    <p style="margin-top: 1rem; max-width: 700px; color: var(--fg-muted); font-size: 1.1rem;">Better spec → better code. Better plan → fewer rewrites. Leverage compounds at every step.</p>
+  </div>
+
+  <!-- 16 · SUMMARY -->
+  <div class="slide">
+    <div class="kicker">Summary</div>
+    <h2>Five commands.<br><span class="accent">One pattern.</span></h2>
+    <div class="sum-grid">
+      <div class="sum-card hi">
+        <div class="sum-slash">/debug</div>
+        <div class="sum-name">Root cause → fix → verify</div>
+        <div class="sum-hook">↳ PostToolUse: auto-retest</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">/refactor</div>
+        <div class="sum-name">Plan → approve → act</div>
+        <div class="sum-hook">↳ PreToolUse: block force push</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">/test</div>
+        <div class="sum-name">Read → generate → 80% gate</div>
+        <div class="sum-hook">↳ Stop: coverage check</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">/docs</div>
+        <div class="sum-name">TSDoc + Swagger → validate</div>
+        <div class="sum-hook">↳ PostToolUse: typedoc lint</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">/review</div>
+        <div class="sum-name">Diff → EQC check → severity</div>
+        <div class="sum-hook">↳ PreToolUse: secret scan</div>
+      </div>
+    </div>
+    <p style="margin-top: 2rem; max-width: 720px;">Each command has a paired hook. The command shapes Claude's reasoning. The hook enforces the quality gate deterministically.</p>
+  </div>
+
+  <!-- 17 · CLOSE -->
+  <div class="slide center">
+    <div class="kicker">Next steps</div>
+    <h1>Add one.<br><span class="accent">See the difference.</span></h1>
+    <p style="margin-top: 2rem; max-width: 580px;">Start with <code style="font-size: 1.25rem;">/review</code> — run it before your next PR. One command. One quality gate. Five minutes of setup.</p>
+    <p style="margin-top: 1.1rem; max-width: 580px; color: var(--fg-muted);">Then add the rest. Commit them. Share them. The team quality rises with the repo.</p>
+  </div>
+
+</div>
+
+<div class="progress-bar" id="progress"></div>
+
+<nav class="slide-nav">
+  <button id="prev" aria-label="Previous slide">←</button>
+  <button id="next" aria-label="Next slide">→</button>
+</nav>
+<div class="slide-counter" id="counter"></div>
+<div class="kbd-hint">← → Space · Home · End</div>
+
+<script>
+  const slides   = document.querySelectorAll('.slide');
+  const progress = document.getElementById('progress');
+  const counter  = document.getElementById('counter');
+  let cur = 0;
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    cur = (n + slides.length) % slides.length;
+    slides[cur].classList.add('active');
+    counter.textContent = `${cur + 1} / ${slides.length}`;
+    progress.style.width = `${((cur + 1) / slides.length) * 100}%`;
+  }
+
+  document.getElementById('next').onclick = () => show(cur + 1);
+  document.getElementById('prev').onclick  = () => show(cur - 1);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); show(cur + 1); }
+    if (e.key === 'ArrowLeft')  show(cur - 1);
+    if (e.key === 'Home')       show(0);
+    if (e.key === 'End')        show(slides.length - 1);
+  });
+
+  show(0);
+</script>
+</body>
+</html>
