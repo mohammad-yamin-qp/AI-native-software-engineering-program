@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI-Powered Learning — Accelerating Skill Acquisition</title>
+  <style>
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&display=swap');
+
+  :root {
+    --bg:      #ffffff;
+    --fg:      #0f0f0f;
+    --fg-sub:  #2e2e2e;
+    --fg-muted:#666666;
+    --border:  #e0e0e0;
+    --surface: #f4f4f6;
+    --accent:  oklch(61.6% 0.1696 251.2);
+    --accent-soft: oklch(61.6% 0.1696 251.2 / 8%);
+    --accent-mid:  oklch(61.6% 0.1696 251.2 / 18%);
+    --slide-bg: #fff;
+    --slide-text: oklch(47.8% 0.0244 255);
+    --slide-text-subtle: oklch(68.9% 0 0);
+    --slide-border: oklch(88.2% 0 0);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Fira Sans', system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--fg);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .slides { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 4.5rem 7rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    background: var(--bg);
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+  .slide.center { align-items: center; text-align: center; }
+
+  h1 { font-size: 5.25rem; font-weight: 700; color: var(--fg); line-height: 1.06; letter-spacing: -0.025em; }
+  h2 { font-size: 3.75rem; font-weight: 600; color: var(--fg); line-height: 1.1;  letter-spacing: -0.015em; }
+  h3 { font-size: 2rem; font-weight: 600; color: var(--fg); line-height: 1.2; }
+  p  { font-size: 1.45rem; color: var(--fg-sub); line-height: 1.65; }
+
+  .kicker {
+    font-size: 0.85rem; font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 1.5rem;
+  }
+  .accent { color: var(--accent); }
+
+  /* Title slide */
+  .slide.title-slide { border-left: 6px solid var(--accent); }
+
+  /* Divider slides */
+  .slide.divider { background: var(--accent); }
+  .slide.divider h2 { color: #fff; font-size: 3.75rem; }
+  .slide.divider .sub { font-size: 1.35rem; color: oklch(100% 0 0 / 65%); margin-top: 0.75rem; }
+
+  /* Progress bar */
+  .progress-bar { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent); width: 0; z-index: 100; transition: width 0.35s cubic-bezier(.2,.8,.2,1); }
+
+  /* Nav */
+  .slide-nav {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    display: flex; gap: 0.5rem; z-index: 100;
+  }
+  .slide-nav button {
+    font-family: inherit; font-size: 1.1rem; padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--fg-muted); cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .slide-nav button:hover { color: var(--fg); background: #ebebeb; }
+  .slide-nav button:active { transform: scale(0.92); }
+
+  .slide-counter {
+    position: fixed; bottom: 1.75rem; left: 50%; transform: translateX(-50%);
+    font-size: 0.8rem; color: var(--fg-muted);
+  }
+
+  /* Keyboard hint */
+  .kbd-hint {
+    position: fixed; bottom: 1.75rem; left: 1.5rem;
+    font-size: 0.72rem; color: var(--fg-muted); letter-spacing: 0.04em;
+  }
+
+  /* ── Component styles ── */
+
+  /* Concept comparison */
+  .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; margin-top: 2rem; }
+  .vs-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 1.5rem 1.75rem; background: var(--surface); }
+  .vs-card.hi { border-color: var(--accent); background: var(--accent-soft); }
+  .vs-card-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.5rem; }
+  .vs-card.hi .vs-card-label { color: var(--accent); }
+  .vs-card-title { font-size: 1.6rem; font-weight: 700; color: var(--fg); margin-bottom: 0.75rem; }
+  .vs-card.hi .vs-card-title { color: var(--accent); }
+  .vs-attr { font-size: 1rem; color: var(--fg-muted); margin-bottom: 0.35rem; line-height: 1.5; }
+  .vs-attr strong { color: var(--fg-sub); font-weight: 600; }
+
+  /* Step-by-step flow */
+  .steps-list { display: flex; flex-direction: column; margin-top: 2rem; width: 100%; max-width: 680px; }
+  .step-row { display: flex; align-items: flex-start; gap: 1.5rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .step-row:first-child { border-radius: 14px 14px 0 0; }
+  .step-row:last-child  { border-bottom: none; border-radius: 0 0 14px 14px; }
+  .step-row.hi { background: var(--accent-soft); }
+  .step-num   { font-size: 0.72rem; font-weight: 700; color: var(--accent); width: 22px; flex-shrink: 0; padding-top: 0.2rem; font-family: monospace; }
+  .step-title { font-size: 1rem;    font-weight: 700; color: var(--fg); }
+  .step-desc  { font-size: 0.92rem; color: var(--fg-muted); margin-top: 0.2rem; line-height: 1.45; }
+
+  /* Chat conversation */
+  .chat-block { display: flex; flex-direction: column; gap: 0.85rem; margin-top: 2rem; width: 100%; max-width: 720px; }
+  .chat-row { display: flex; gap: 1rem; align-items: flex-start; }
+  .chat-who  { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; width: 58px; flex-shrink: 0; padding-top: 0.55rem; }
+  .chat-who.you  { color: var(--accent); }
+  .chat-who.ai   { color: var(--fg-muted); }
+  .chat-who.hook { color: oklch(72.3% 0.1755 56.7); }
+  .chat-bubble { font-family: monospace; font-size: 1rem; padding: 0.6rem 1rem; border-radius: 10px; line-height: 1.6; flex: 1; }
+  .chat-bubble.cmd    { background: var(--accent-soft); border: 1px solid var(--accent); color: oklch(33% 0.13 254); }
+  .chat-bubble.reply  { background: var(--surface); border: 1px solid var(--border); color: var(--fg-sub); }
+  .chat-bubble.hookbg { background: oklch(72.3% 0.1755 56.7 / 8%); border: 1px solid oklch(72.3% 0.1755 56.7 / 30%); color: oklch(38% 0.15 50); }
+  .chat-bubble.ok     { background: oklch(93.4% 0.0698 124.3); border: 1px solid oklch(49.9% 0.1603 139.9 / 40%); color: oklch(31% 0.12 140); }
+
+  /* Decision table */
+  .dtable { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+  .dtable th { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.5rem 1rem; border-bottom: 2px solid var(--border); color: var(--fg-muted); text-align: left; }
+  .dtable th.acc { color: var(--accent); }
+  .dtable td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 1rem; color: var(--fg-sub); vertical-align: middle; }
+  .dtable tr:last-child td { border-bottom: none; }
+  .dtable tr:hover td { background: var(--surface); }
+  .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.18rem 0.55rem; border-radius: 5px; }
+  .badge-same { background: oklch(93.4% 0.0698 124.3); color: oklch(31% 0.12 140); border: 1px solid oklch(49.9% 0.1603 139.9 / 40%); }
+  .badge-diff { background: oklch(95% 0.0781 95.7); color: oklch(38% 0.1 80); border: 1px solid oklch(65% 0.12 80 / 35%); }
+
+  /* Dark mono block (EXPLAIN plan) */
+  .hook-block { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; width: 100%; margin-top: 1.75rem; }
+  .hook-head { padding: 0.6rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); display: flex; gap: 1.25rem; }
+  .hook-event { color: oklch(72.3% 0.1755 56.7); }
+  .hook-body { background: #0e0e0e; padding: 1.1rem 1.5rem; font-family: monospace; font-size: 0.95rem; line-height: 1.75; color: #ccc; overflow-x: auto; }
+  .plan-warn { color: #e5c07b; }
+  .plan-ok   { color: #98c379; }
+  .plan-dim  { color: #666; }
+
+  /* Pipeline flow (flywheel) */
+  .pipeline { display: flex; align-items: stretch; width: 100%; margin-top: 2rem; gap: 0; }
+  .pip-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; padding: 0.65rem 0.5rem; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .pip-step.on { border-color: var(--accent); background: var(--accent-soft); }
+  .pip-step-name { font-size: 0.82rem; font-weight: 700; color: var(--fg-muted); white-space: nowrap; }
+  .pip-step.on .pip-step-name { color: var(--accent); }
+  .pip-badge { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); background: var(--accent-mid); padding: 0.1rem 0.35rem; border-radius: 4px; }
+  .pip-arr { font-size: 1rem; color: var(--border); padding: 0 0.3rem; align-self: center; flex-shrink: 0; }
+  .pip-arr.on { color: var(--accent); opacity: 0.5; }
+
+  /* Summary grid */
+  .sum-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.85rem; width: 100%; margin-top: 2rem; }
+  .sum-card { border: 1.5px solid var(--border); border-radius: 12px; padding: 1.1rem 1rem; background: var(--surface); display: flex; flex-direction: column; gap: 0.35rem; }
+  .sum-card.hi { border-color: var(--accent); background: var(--accent-soft); }
+  .sum-slash { font-size: 1rem; font-weight: 700; color: var(--accent); font-family: monospace; }
+  .sum-name  { font-size: 0.85rem; font-weight: 600; color: var(--fg-sub); line-height: 1.3; }
+  .sum-card.hi .sum-name { color: var(--fg); }
+  .sum-hook  { font-size: 0.68rem; color: oklch(72.3% 0.1755 56.7); margin-top: 0.2rem; }
+
+  /* ── Prompt cards (new component, same visual language as cmd-block) ── */
+  .prompt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; margin-top: 1.75rem; }
+  .prompt-card { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+  .prompt-head { padding: 0.65rem 1.25rem; background: var(--fg); display: flex; align-items: center; gap: 0.75rem; }
+  .prompt-dots { display: flex; gap: 0.4rem; }
+  .prompt-dot  { width: 10px; height: 10px; border-radius: 50%; background: #3a3a3a; }
+  .prompt-name { font-family: monospace; font-size: 0.85rem; color: #aaa; margin-left: 0.25rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .copy-btn {
+    font-family: inherit; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 0.3rem 0.8rem; border-radius: 6px;
+    border: 1px solid #444; background: #1c1c1c; color: #bbb; cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, transform 0.1s ease; flex-shrink: 0;
+  }
+  .copy-btn:hover { color: #fff; border-color: #777; }
+  .copy-btn:active { transform: scale(0.94); }
+  .copy-btn.done { color: #98c379; border-color: #98c379; }
+  .prompt-body { background: #0e0e0e; padding: 1.1rem 1.4rem; font-family: monospace; font-size: 0.83rem; line-height: 1.65; color: #ccc; white-space: pre-wrap; overflow-y: auto; max-height: 44vh; flex: 1; }
+  .prompt-tip { padding: 0.65rem 1.25rem; background: var(--surface); border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--fg-muted); line-height: 1.45; }
+  .prompt-tip strong { color: var(--accent); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 0.4rem; }
+
+  /* ── Animations ── */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes riseIn   { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+    @keyframes popIn    { from { opacity: 0; transform: scale(0.86); }      to { opacity: 1; transform: none; } }
+    @keyframes slideInL { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+
+    .slide.active .kicker { animation: riseIn 0.5s ease both; }
+    .slide.active h1       { animation: riseIn 0.6s cubic-bezier(.2,.7,.2,1) 0.05s both; }
+    .slide.active h2       { animation: riseIn 0.6s cubic-bezier(.2,.7,.2,1) 0.05s both; }
+    .slide.active > p,
+    .slide.active .chat-block,
+    .slide.active .dtable  { animation: riseIn 0.6s ease 0.15s both; }
+    .slide.active > p ~ p  { animation-delay: 0.28s; }
+
+    .slide.divider.active h2   { animation: popIn 0.55s cubic-bezier(.2,.8,.2,1) both; }
+    .slide.divider.active .sub { animation: riseIn 0.5s ease 0.2s both; }
+
+    .slide.active .step-row { animation: slideInL 0.5s ease both; }
+    .slide.active .step-row:nth-child(1){animation-delay:.15s}
+    .slide.active .step-row:nth-child(2){animation-delay:.27s}
+    .slide.active .step-row:nth-child(3){animation-delay:.39s}
+    .slide.active .step-row:nth-child(4){animation-delay:.51s}
+    .slide.active .step-row:nth-child(5){animation-delay:.63s}
+    .slide.active .step-row:nth-child(6){animation-delay:.75s}
+
+    .slide.active .vs-card { animation: popIn 0.5s ease both; }
+    .slide.active .vs-card:nth-child(1){animation-delay:.10s}
+    .slide.active .vs-card:nth-child(2){animation-delay:.22s}
+
+    .slide.active .sum-card { animation: popIn 0.45s ease both; }
+    .slide.active .sum-card:nth-child(1){animation-delay:.08s}
+    .slide.active .sum-card:nth-child(2){animation-delay:.16s}
+    .slide.active .sum-card:nth-child(3){animation-delay:.24s}
+    .slide.active .sum-card:nth-child(4){animation-delay:.32s}
+    .slide.active .sum-card:nth-child(5){animation-delay:.40s}
+    .slide.active .sum-card:nth-child(6){animation-delay:.48s}
+
+    .slide.active .chat-row { animation: slideInL 0.45s ease both; }
+    .slide.active .chat-row:nth-child(1){animation-delay:.12s}
+    .slide.active .chat-row:nth-child(2){animation-delay:.26s}
+    .slide.active .chat-row:nth-child(3){animation-delay:.40s}
+    .slide.active .chat-row:nth-child(4){animation-delay:.54s}
+
+    .slide.active .pip-step { animation: popIn 0.4s ease both; }
+    .slide.active .pip-step:nth-child(1){animation-delay:.08s}
+    .slide.active .pip-step:nth-child(3){animation-delay:.18s}
+    .slide.active .pip-step:nth-child(5){animation-delay:.28s}
+    .slide.active .pip-step:nth-child(7){animation-delay:.38s}
+
+    .slide.active .hook-block { animation: riseIn 0.55s ease 0.2s both; }
+    .slide.active .vs-grid { animation: riseIn 0.55s ease 0.15s both; }
+
+    .slide.active .prompt-card { animation: popIn 0.5s ease both; }
+    .slide.active .prompt-card:nth-child(1){animation-delay:.12s}
+    .slide.active .prompt-card:nth-child(2){animation-delay:.26s}
+  }
+  </style>
+</head>
+<body>
+
+<div class="slides">
+
+  <!-- 01 · TITLE -->
+  <div class="slide title-slide active">
+    <div class="kicker">AI-Powered Learning · Interactive Session · 45 min</div>
+    <h1>Learn Faster.<br>Retain More.<br><span class="accent">Use AI Right.</span></h1>
+    <p style="margin-top: 2rem; max-width: 640px;">Six techniques to accelerate skill acquisition with Claude — every one demonstrated live with a copy-ready prompt.</p>
+  </div>
+
+  <!-- 02 · THE PROBLEM -->
+  <div class="slide center">
+    <div class="kicker">The problem</div>
+    <h1>AI answers fast.<br>You learn <span class="accent">nothing.</span></h1>
+    <p style="margin-top: 2rem; max-width: 620px;">Ask → copy → paste → ship → forget. Same question again next month.</p>
+    <p style="margin-top: 1.1rem; max-width: 620px; color: var(--fg-muted);">Feels productive. Zero retained skill.</p>
+  </div>
+
+  <!-- 03 · THESIS -->
+  <div class="slide center">
+    <div class="kicker">The fix</div>
+    <h1>Attempt first.<br><span class="accent">AI second.</span></h1>
+    <p style="margin-top: 2rem; max-width: 640px;">Never let AI do the thinking. Make it <em>coach</em> the thinking — hints, feedback, and questions instead of answers.</p>
+  </div>
+
+  <!-- 04 · ROADMAP -->
+  <div class="slide">
+    <div class="kicker">Today's route</div>
+    <h2>Six techniques.<br><span class="accent">Twelve live prompts.</span></h2>
+    <div class="steps-list" style="max-width: 100%;">
+      <div class="step-row">
+        <div class="step-num">01</div>
+        <div><div class="step-title">Learning Faster with AI</div><div class="step-desc">The active-loop mindset — why prompting for answers keeps you slow. ~7 min</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">02</div>
+        <div><div class="step-title">Using AI to Learn DSA</div><div class="step-desc">Progressive hints and pattern drills instead of solution dumps. ~7 min</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">03</div>
+        <div><div class="step-title">Using AI to Learn System Design</div><div class="step-desc">Turn AI into a staff-level interviewer that attacks your design. ~7 min</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">04</div>
+        <div><div class="step-title">Using AI to Learn Databases</div><div class="step-desc">Learn from your own EXPLAIN plans and real schemas. ~8 min</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">05</div>
+        <div><div class="step-title">Using AI to Learn New Technologies</div><div class="step-desc">Map new tech onto what you already know — spike, don't read. ~7 min</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">06</div>
+        <div><div class="step-title">Building a Continuous Learning System</div><div class="step-desc">A weekly flywheel that runs on your actual work, not willpower. ~7 min</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER · SECTION 1 -->
+  <div class="slide divider center">
+    <h2>01 · Learning Faster with AI</h2>
+    <div class="sub">Answers make you faster today. Loops make you faster forever.</div>
+  </div>
+
+  <!-- 06 · S1 CONCEPT -->
+  <div class="slide">
+    <div class="kicker">01 · The mental model</div>
+    <h2>Answer machine vs.<br><span class="accent">tutor.</span></h2>
+    <div class="vs-grid">
+      <div class="vs-card">
+        <div class="vs-card-label">Passive mode — most devs</div>
+        <div class="vs-card-title">Ask → copy → forget</div>
+        <div class="vs-attr"><strong>Loop:</strong> Ask AI → paste answer → ship → same question next month</div>
+        <div class="vs-attr"><strong>Speed today:</strong> Fast</div>
+        <div class="vs-attr"><strong>Skill retained:</strong> ~Zero</div>
+        <div class="vs-attr"><strong>Analogy:</strong> GPS — you arrive, but you still can't navigate</div>
+      </div>
+      <div class="vs-card hi">
+        <div class="vs-card-label">Active loop — today's practice</div>
+        <div class="vs-card-title">Attempt → feedback → explain</div>
+        <div class="vs-attr"><strong>Loop:</strong> Attempt first → AI gives feedback → you explain back → AI probes your gaps</div>
+        <div class="vs-attr"><strong>Speed today:</strong> Slower per task</div>
+        <div class="vs-attr"><strong>Skill retained:</strong> Compounds weekly</div>
+        <div class="vs-attr"><strong>Analogy:</strong> A coach — corrects your form mid-rep</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 07 · S1 PROMPTS -->
+  <div class="slide">
+    <div class="kicker">01 · Live demo · Two prompts</div>
+    <h3>Flip AI from answer machine to <span class="accent">tutor</span></h3>
+    <div class="prompt-grid">
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-feynman-flip.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">I'm a backend developer (NestJS, TypeORM, PostgreSQL). I'm going to explain how NestJS interceptors work in my own words. Your job:
+
+1. Do NOT explain it yourself first.
+2. Point out every misconception or imprecise claim in my explanation.
+3. Then ask me 3 follow-up questions that target the edges I avoided (execution order, RxJS stream handling, exception paths).
+4. Rate my understanding 1–10 and tell me exactly what to study to reach 10.
+
+Here's my explanation: [I'll type it live]</div>
+        <div class="prompt-tip"><strong>Demo</strong>Explain interceptors imperfectly on purpose — watch it catch the gaps the audience also has.</div>
+      </div>
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">just-in-time-depth.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">I'm in the middle of debugging and I need to learn just enough, fast. Topic: how Node.js handles memory for Buffers vs heap objects (my NestJS service's RSS spikes on large file uploads).
+
+Teach me in 3 layers:
+- Layer 1 (2 min): the minimum I need to act right now.
+- Layer 2 (5 min): the mental model that makes Layer 1 obvious.
+- Layer 3: what I can safely IGNORE today, and one question to test whether I actually got Layer 2.
+
+Stop after Layer 1 and wait for me to say "next".</div>
+        <div class="prompt-tip"><strong>Demo</strong>Real production scenario — "stop and wait" shows you control the pacing.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER · SECTION 2 -->
+  <div class="slide divider center">
+    <h2>02 · Using AI to Learn DSA</h2>
+    <div class="sub">The solution is the least valuable part of a problem</div>
+  </div>
+
+  <!-- 09 · S2 CONCEPT -->
+  <div class="slide">
+    <div class="kicker">02 · The mental model</div>
+    <h2>Ration the hints.<br><span class="accent">Preserve the struggle.</span></h2>
+    <div class="steps-list">
+      <div class="step-row">
+        <div class="step-num">H1</div>
+        <div><div class="step-title">Nudge</div><div class="step-desc">"What changes as the window slides?" — a question, not a direction.</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">H2</div>
+        <div><div class="step-title">Direction</div><div class="step-desc">"What state would avoid recomputing?" — points at the idea, not the code.</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">H3</div>
+        <div><div class="step-title">Targeted</div><div class="step-desc">A failing test case only — which input breaks your code, never the fix.</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">H4</div>
+        <div><div class="step-title">Scaffold</div><div class="step-desc">Pseudocode skeleton with the key lines left blank.</div></div>
+      </div>
+      <div class="step-row hi">
+        <div class="step-num">✓</div>
+        <div><div class="step-title">You solve it — it sticks</div><div class="step-desc">Learning happens in the struggle zone. AI's job is to keep you there, not rescue you.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 · S2 PROMPTS -->
+  <div class="slide">
+    <div class="kicker">02 · Live demo · Two prompts</div>
+    <h3>Struggle-preserving prompts for <span class="accent">DSA</span></h3>
+    <div class="prompt-grid">
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-hint-rationer.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">You are my DSA coach. Strict rules:
+
+1. NEVER give me the solution or working code, even if I beg.
+2. Give hints one at a time, weakest first. Wait for my attempt after each hint.
+3. If my code is wrong, respond ONLY with a failing test case (input + expected output) — not the fix.
+4. When I solve it, make me state the time/space complexity and the general pattern name before you confirm.
+
+Problem: Given a stream of API request timestamps, return the max number of requests in any 60-second window. (I'll paste my attempts in TypeScript.)
+
+Start with hint 1 only.</div>
+        <div class="prompt-tip"><strong>Demo</strong>Attempt it wrong live — the "failing test case only" reply is the moment the audience gets it.</div>
+      </div>
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-pattern-gym.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">I want to internalize the "sliding window" pattern, not memorize one problem.
+
+Generate 3 problems using this pattern, disguised in backend scenarios I'd actually meet (rate limiter, log analysis, connection pool monitoring). Order them easy → hard.
+
+Rules:
+- Show only problem 1. Reveal the next only after I solve the current one.
+- After each solve, ask me: "What was the SIGNAL in the problem statement that says sliding window?"
+- At the end, give me a 5-line cheat card: pattern name, signals, template, classic mistake, complexity.
+
+Begin.</div>
+        <div class="prompt-tip"><strong>Demo</strong>Pause on the "what was the SIGNAL?" question — that's the skill interviews actually test.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER · SECTION 3 -->
+  <div class="slide divider center">
+    <h2>03 · Using AI to Learn System Design</h2>
+    <div class="sub">Don't ask AI to design — make it attack your design</div>
+  </div>
+
+  <!-- 12 · S3 CONCEPT -->
+  <div class="slide">
+    <div class="kicker">03 · The mental model</div>
+    <h2>AI as a tireless<br><span class="accent">staff interviewer.</span></h2>
+    <div class="chat-block">
+      <div class="chat-row">
+        <span class="chat-who ai">Claude</span>
+        <div class="chat-bubble reply">Your single Redis instance holds sessions AND the hot cache. It just died. Walk me through the next 60 seconds for your users.</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who you">You</span>
+        <div class="chat-bubble cmd">Sessions drop… users get logged out. Cache misses hit Postgres directly—</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Claude</span>
+        <div class="chat-bubble reply">So a cache failure becomes a database overload. Was coupling those two workloads a deliberate trade-off or an accident? Defend it or change it.</div>
+      </div>
+      <div class="chat-row">
+        <span class="chat-who ai">Verdict</span>
+        <div class="chat-bubble hookbg">Reading designs ≠ designing. You learn trade-offs only when YOUR choices get challenged — one question at a time.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 · S3 PROMPTS -->
+  <div class="slide">
+    <div class="kicker">03 · Live demo · Two prompts</div>
+    <h3>Adversarial prompts for <span class="accent">system design</span></h3>
+    <div class="prompt-grid">
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-mock-interviewer.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">Act as a staff engineer running a system design interview. Topic: design a URL shortener for survey links — 50M redirects/day, links expire, per-client analytics.
+
+Rules:
+1. One question at a time. Wait for my answer before continuing.
+2. Push back on at least one choice per answer — force me to justify or change it.
+3. Inject 2 surprise events mid-interview (a region outage, a 10× traffic spike) and make me adapt.
+4. Track my weak areas silently. At the end, give a structured verdict: level (junior/mid/senior/staff), 3 strengths, 3 gaps, and what to study for each gap.
+
+Start the interview now.</div>
+        <div class="prompt-tip"><strong>Demo</strong>Do 2–3 rounds live, audience votes on answers — the mid-interview outage lands great.</div>
+      </div>
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-design-attacker.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">Here is my architecture (I'll describe it): a NestJS API behind a load balancer, PostgreSQL primary + read replica, Redis for sessions and hot cache, a worker service consuming a queue for CSV imports up to 2GB.
+
+Attack this design:
+1. Find the 5 most likely failure modes, ranked by blast radius.
+2. For each one, ASK me how I'd handle it first — only reveal your answer after mine.
+3. Then tell me which single change buys the most resilience per unit of effort.
+4. Finish with the one concept I clearly need to study, with a concrete resource.
+
+Failure mode #1 — go.</div>
+        <div class="prompt-tip"><strong>Demo</strong>Describe one of your real services (sanitized) — real stakes make the critique gripping.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER · SECTION 4 -->
+  <div class="slide divider center">
+    <h2>04 · Using AI to Learn Databases</h2>
+    <div class="sub">Your production queries are a better textbook than any course</div>
+  </div>
+
+  <!-- 15 · S4 CONCEPT -->
+  <div class="slide">
+    <div class="kicker">04 · The mental model</div>
+    <h2>Read plans like<br><span class="accent">a DBA.</span></h2>
+    <div class="hook-block">
+      <div class="hook-head">
+        <span>EXPLAIN (ANALYZE, BUFFERS)</span>
+        <span class="hook-event">AI walks it node by node · then quizzes you</span>
+      </div>
+      <div class="hook-body"><span class="plan-dim">-- bottom-up, one node at a time:</span><br>Nested Loop  <span class="plan-warn">(actual rows 48,112 vs planned 210 — 229× off)</span><br>&nbsp;&nbsp;→ Index Scan on idx_client_created  <span class="plan-ok">(fast, as expected)</span><br>&nbsp;&nbsp;→ Seq Scan on client_dataset_p2  <span class="plan-warn">(filter discards 97% of rows)</span><br><span class="plan-dim">-- then it asks YOU: "why did the planner mis-estimate, and which stat would fix it?"</span></div>
+    </div>
+    <p style="margin-top: 1.5rem; max-width: 700px; font-size: 1.1rem;">EXPLAIN output is dense, hostile — and exactly where senior database skill lives. AI decodes it line by line, then quizzes you on the next plan so the skill transfers.</p>
+  </div>
+
+  <!-- 16 · S4 PROMPTS -->
+  <div class="slide">
+    <div class="kicker">04 · Live demo · Two prompts</div>
+    <h3>Learning Postgres from <span class="accent">your own workload</span></h3>
+    <div class="prompt-grid">
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-explain-decoder.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">I'm pasting an EXPLAIN (ANALYZE, BUFFERS) output from PostgreSQL. Teach me to read it:
+
+1. Walk the plan bottom-up, one node at a time. For each node: what it does, planned vs actual rows, and whether the gap matters.
+2. Flag every red flag (seq scans on big tables, misestimates >10×, spilled sorts, high buffer reads) and explain WHY it's a red flag.
+3. Tell me the single highest-impact fix — but first ask me to guess it.
+4. Then generate a NEW similar plan with one hidden problem and quiz me on finding it.
+
+Here's the output: [paste EXPLAIN ANALYZE]</div>
+        <div class="prompt-tip"><strong>Demo</strong>Bring a real (sanitized) slow query from your codebase — recognition beats invention.</div>
+      </div>
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-socratic-index-designer.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">I have a multi-tenant PostgreSQL table: hash-partitioned into 4 partitions, ~80M rows, generic columns (field1–field10 as text), heavy ILIKE searches and per-client filtered lists with pagination.
+
+Do NOT recommend indexes yet. Instead, interview me:
+1. Ask me about my query patterns ONE question at a time (filters, sort orders, cardinality, write volume).
+2. After each answer, explain how it changes the index strategy — teach the reasoning, not just the conclusion.
+3. Only after 5+ questions, propose the index set (btree, GIN/pg_trgm, partial, covering) with the WHY for each.
+4. End by asking me to predict which index the planner will actually pick for 2 sample queries.</div>
+        <div class="prompt-tip"><strong>Demo</strong>The room will recognize this table shape — invite them to answer the AI's questions.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER · SECTION 5 -->
+  <div class="slide divider center">
+    <h2>05 · Using AI to Learn New Technologies</h2>
+    <div class="sub">You don't learn from zero — you learn by mapping</div>
+  </div>
+
+  <!-- 18 · S5 CONCEPT -->
+  <div class="slide">
+    <div class="kicker">05 · The mental model</div>
+    <h2>Map it — then find where<br><span class="accent">the map breaks.</span></h2>
+    <table class="dtable" style="margin-top: 1.5rem; max-width: 980px;">
+      <thead>
+        <tr>
+          <th>You already know</th>
+          <th class="acc">Learning (e.g., Go)</th>
+          <th>Mapping</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>NestJS module + DI container</td><td>Packages + explicit wiring — no DI magic</td><td><span class="badge badge-diff">⚠ Breaks</span></td></tr>
+        <tr><td>TypeORM entities &amp; migrations</td><td>sqlc / GORM — SQL-first, less abstraction</td><td><span class="badge badge-diff">⚠ Breaks</span></td></tr>
+        <tr><td>Express middleware chain</td><td>net/http handlers + middleware funcs</td><td><span class="badge badge-same">Maps</span></td></tr>
+        <tr><td>npm workspaces</td><td>Go modules</td><td><span class="badge badge-same">Maps</span></td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top: 1.5rem; max-width: 700px; font-size: 1.1rem;">The <strong>broken mappings</strong> are where your bugs will live — make AI flag them explicitly.</p>
+  </div>
+
+  <!-- 19 · S5 PROMPTS -->
+  <div class="slide">
+    <div class="kicker">05 · Live demo · Two prompts</div>
+    <h3>Prompts that ride your <span class="accent">existing knowledge</span></h3>
+    <div class="prompt-grid">
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-concept-mapper.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">I know NestJS, TypeORM, PostgreSQL and Docker deeply. I'm starting with Go for backend services.
+
+Build me a mapping table: for each core Go concept (project layout, dependency wiring, error handling, concurrency, DB access, testing), show:
+- the closest equivalent in my stack,
+- how it's the SAME,
+- how it's DIFFERENT — and mark with ⚠ every place where my NestJS instincts will produce a bug or an anti-pattern in Go.
+
+Then give me the 3 highest-risk ⚠ items as a "do not do this" list, and one 10-line idiomatic example for each.</div>
+        <div class="prompt-tip"><strong>Demo</strong>Swap "Go" for whatever the team is adopting — the ⚠ column is what docs don't give you.</div>
+      </div>
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-2-hour-spike.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">Design a 2-hour spike project that forces me through the 6 most important concepts of [Redis Streams / Kafka / tRPC — pick one live].
+
+Constraints:
+1. It must produce something runnable I can demo (docker compose is fine).
+2. Break it into 5 milestones with a time budget each. Milestones only — NO code up front.
+3. When I say "stuck: [problem]", give the smallest possible hint first.
+4. Each milestone ends with one "prove-it" question I must answer before moving on.
+5. Milestone 5 must intentionally break something so I learn the failure behavior.
+
+Give me the milestone plan.</div>
+        <div class="prompt-tip"><strong>Demo</strong>Run in Claude Code — it can scaffold the compose file when you legitimately need it.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER · SECTION 6 -->
+  <div class="slide divider center">
+    <h2>06 · Building a Continuous Learning System</h2>
+    <div class="sub">Motivation fails. Systems don't.</div>
+  </div>
+
+  <!-- 21 · S6 CONCEPT -->
+  <div class="slide">
+    <div class="kicker">06 · The mental model</div>
+    <h2>A flywheel fueled by<br><span class="accent">work you already did.</span></h2>
+    <div class="pipeline" style="max-width: 900px;">
+      <div class="pip-step on"><div class="pip-badge">1</div><div class="pip-step-name">Capture</div></div>
+      <div class="pip-arr on">→</div>
+      <div class="pip-step on"><div class="pip-badge">2</div><div class="pip-step-name">Digest</div></div>
+      <div class="pip-arr on">→</div>
+      <div class="pip-step on"><div class="pip-badge">3</div><div class="pip-step-name">Apply</div></div>
+      <div class="pip-arr on">→</div>
+      <div class="pip-step on"><div class="pip-badge">4</div><div class="pip-step-name">Teach</div></div>
+    </div>
+    <div class="steps-list" style="margin-top: 1.75rem; max-width: 100%;">
+      <div class="step-row">
+        <div class="step-num">1–2</div>
+        <div><div class="step-title">Your PRs and incidents are the curriculum</div><div class="step-desc">Claude Code reads your repo and git history — "digest" becomes a command, not a chore. No extra note-taking discipline needed.</div></div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">3–4</div>
+        <div><div class="step-title">Teaching is the forcing function</div><div class="step-desc">One drill or spike per gap, then explain it — a session, a doc, a PR review. This very session is stage 4 of the wheel.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 22 · S6 PROMPTS -->
+  <div class="slide">
+    <div class="kicker">06 · Live demo · Two prompts</div>
+    <h3>Automating the flywheel with <span class="accent">Claude Code</span></h3>
+    <div class="prompt-grid">
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-weekly-digest.prompt · claude code</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">Read my commits and merged branches from the last 7 days in this repo (git log --since="7 days ago" --author=me, plus the diffs of the 5 largest changes).
+
+Produce my weekly learning digest:
+1. 3 concepts I used but likely don't fully understand (judge from the code — e.g., copied patterns, over-defensive code, TODO comments).
+2. 2 recurring patterns in my code worth studying properly, with evidence (file:line).
+3. 1 quiz question per concept — hard enough that guessing fails.
+4. A 30-minute study plan for the single most valuable gap.
+
+Be blunt. Flattery wastes my time.</div>
+        <div class="prompt-tip"><strong>Demo</strong>Run live in Claude Code on a real repo — "file:line evidence" gets audible reactions.</div>
+      </div>
+      <div class="prompt-card">
+        <div class="prompt-head">
+          <div class="prompt-dots"><span class="prompt-dot"></span><span class="prompt-dot"></span><span class="prompt-dot"></span></div>
+          <span class="prompt-name">the-spaced-repetition-ledger.prompt</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="prompt-body">I keep a learning ledger in markdown — one line per thing learned, with a date:
+[paste ledger, e.g.:
+2026-06-30 GIN index invalid after statement_timeout during CREATE INDEX CONCURRENTLY
+2026-07-04 keyset pagination vs OFFSET on partitioned tables
+2026-07-08 Node Buffer memory lives outside V8 heap]
+
+1. Quiz me on entries ~1 week old and ~1 month old — hardest first, one at a time, and don't accept vague answers.
+2. Anything I get wrong: re-explain briefly, then re-queue it and tell me the line to update in my ledger.
+3. End with a retention score and which single entry to re-study.</div>
+        <div class="prompt-tip"><strong>Demo</strong>Show your real ledger (3–4 lines is enough). The whole system: one text file + one prompt.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 23 · SUMMARY -->
+  <div class="slide">
+    <div class="kicker">Summary</div>
+    <h2>Six techniques.<br><span class="accent">One rule.</span></h2>
+    <div class="sum-grid">
+      <div class="sum-card hi">
+        <div class="sum-slash">01 · Learn</div>
+        <div class="sum-name">Attempt first, AI second</div>
+        <div class="sum-hook">↳ Feynman Flip · JIT Depth</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">02 · DSA</div>
+        <div class="sum-name">Ration hints, keep the struggle</div>
+        <div class="sum-hook">↳ Hint Rationer · Pattern Gym</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">03 · Design</div>
+        <div class="sum-name">Make AI attack your design</div>
+        <div class="sum-hook">↳ Mock Interviewer · Attacker</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">04 · DB</div>
+        <div class="sum-name">Learn from your own plans</div>
+        <div class="sum-hook">↳ EXPLAIN Decoder · Socratic Index</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">05 · New</div>
+        <div class="sum-name">Map to known, flag the breaks</div>
+        <div class="sum-hook">↳ Concept Mapper · 2-Hour Spike</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-slash">06 · System</div>
+        <div class="sum-name">Flywheel on real work</div>
+        <div class="sum-hook">↳ Weekly Digest · Ledger</div>
+      </div>
+    </div>
+    <p style="margin-top: 2rem; max-width: 720px;">Every prompt enforces struggle before answers. That single rule is the difference between using AI and learning with it.</p>
+  </div>
+
+  <!-- 24 · CLOSE -->
+  <div class="slide center">
+    <div class="kicker">Next steps · Homework</div>
+    <h1>Steal one prompt.<br><span class="accent">Run it this week.</span></h1>
+    <p style="margin-top: 2rem; max-width: 620px;">Start with the <strong>Weekly Digest</strong> — run it in Claude Code on your own repo before next Friday. Bring one surprising gap it found.</p>
+    <p style="margin-top: 1.1rem; max-width: 620px; color: var(--fg-muted);">All 12 prompts are copy-ready from these slides. Adapt the scenarios to your tickets. Share improvements in the team channel.</p>
+  </div>
+
+</div>
+
+<div class="progress-bar" id="progress"></div>
+
+<nav class="slide-nav">
+  <button id="prev" aria-label="Previous slide">←</button>
+  <button id="next" aria-label="Next slide">→</button>
+</nav>
+<div class="slide-counter" id="counter"></div>
+<div class="kbd-hint">← → Space · Home · End</div>
+
+<script>
+  const slides   = document.querySelectorAll('.slide');
+  const progress = document.getElementById('progress');
+  const counter  = document.getElementById('counter');
+  let cur = 0;
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    cur = (n + slides.length) % slides.length;
+    slides[cur].classList.add('active');
+    counter.textContent = `${cur + 1} / ${slides.length}`;
+    progress.style.width = `${((cur + 1) / slides.length) * 100}%`;
+  }
+
+  document.getElementById('next').onclick = () => show(cur + 1);
+  document.getElementById('prev').onclick  = () => show(cur - 1);
+  document.addEventListener('keydown', e => {
+    if (e.target.classList.contains('copy-btn') && e.key === ' ') return;
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); show(cur + 1); }
+    if (e.key === 'ArrowLeft')  show(cur - 1);
+    if (e.key === 'Home')       show(0);
+    if (e.key === 'End')        show(slides.length - 1);
+  });
+
+  // Copy buttons
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const text = btn.closest('.prompt-card').querySelector('.prompt-body').innerText;
+      try { await navigator.clipboard.writeText(text); }
+      catch (err) {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+      }
+      btn.textContent = 'Copied ✓'; btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1800);
+    });
+  });
+
+  show(0);
+</script>
+</body>
+</html>
